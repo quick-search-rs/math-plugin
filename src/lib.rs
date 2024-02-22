@@ -71,8 +71,8 @@ impl Searchable for Math {
             log::error!("failed to copy to clipboard: {}", s);
         }
     }
-    fn plugin_id(&self) -> &PluginId {
-        &self.id
+    fn plugin_id(&self) -> PluginId {
+        self.id.clone()
     }
 }
 

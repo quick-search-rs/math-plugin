@@ -6,7 +6,7 @@ use abi_stable::{
     std_types::{RBox, RStr, RString, RVec},
 };
 use mexprp::{ParseError, Term};
-use quick_search_lib::{ColoredChar, PluginId, SearchLib, SearchLib_Ref, SearchResult, Searchable, Searchable_TO};
+use quick_search_lib::{ColoredChar, Log, PluginId, SearchLib, SearchLib_Ref, SearchResult, Searchable, Searchable_TO};
 
 static NAME: &str = "Math";
 
@@ -16,14 +16,14 @@ pub fn get_library() -> SearchLib_Ref {
 }
 
 #[sabi_extern_fn]
-fn get_searchable(id: PluginId) -> Searchable_TO<'static, RBox<()>> {
-    let this = Math::new(id);
+fn get_searchable(id: PluginId, logger: quick_search_lib::ScopedLogger) -> Searchable_TO<'static, RBox<()>> {
+    let this = Math::new(id, logger);
     Searchable_TO::from_value(this, TD_Opaque)
 }
 
-#[derive(Debug, Clone)]
 struct Math {
     id: PluginId,
+    logger: quick_search_lib::ScopedLogger,
 }
 
 impl Searchable for Math {
@@ -42,7 +42,7 @@ impl Searchable for Math {
                     res.push(result(term.clone(), x));
                 }
                 Err(e) => {
-                    log::error!("Error evaluating expression: {:?}", e);
+                    self.logger.error(&format!("Error evaluating expression: {:?}", e));
                 }
             }
         }
@@ -63,12 +63,12 @@ impl Searchable for Math {
         let s = result.extra_info();
         if let Ok::<clipboard::ClipboardContext, Box<dyn std::error::Error>>(mut clipboard) = clipboard::ClipboardProvider::new() {
             if let Ok(()) = clipboard::ClipboardProvider::set_contents(&mut clipboard, s.to_owned()) {
-                log::info!("copied to clipboard: {}", s);
+                self.logger.info(&format!("copied to clipboard: {}", s));
             } else {
-                log::error!("failed to copy to clipboard: {}", s);
+                self.logger.error(&format!("failed to copy to clipboard: {}", s));
             }
         } else {
-            log::error!("failed to copy to clipboard: {}", s);
+            self.logger.error(&format!("failed to copy to clipboard: {}", s));
         }
     }
     fn plugin_id(&self) -> PluginId {
@@ -82,7 +82,7 @@ fn result(term: Term<f64>, res: f64) -> SearchResult {
 }
 
 impl Math {
-    fn new(id: PluginId) -> Self {
-        Self { id }
+    fn new(id: PluginId, logger: quick_search_lib::ScopedLogger) -> Self {
+        Self { id, logger }
     }
 }
